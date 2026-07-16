@@ -1,6 +1,7 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 import PrometeoEntity, { HAND_TIP_POSITION } from './PrometeoEntity'
 import BlackHole from './BlackHole'
 import AmbientParticles from './AmbientParticles'
@@ -86,6 +87,12 @@ function Composition({ scrollProgress }) {
 }
 
 function HeroScene({ scrollProgress }) {
+  // Bloom adds several extra render passes per frame -- worth it for the
+  // black hole's glow on desktop, but skipped on touch/coarse-pointer
+  // devices (typically weaker GPUs) to keep the narrative animation
+  // smooth there instead.
+  const [bloomEnabled] = useState(() => window.matchMedia('(pointer: fine)').matches)
+
   return (
     <Canvas
       className="h-full w-full"
@@ -101,6 +108,11 @@ function HeroScene({ scrollProgress }) {
       <directionalLight position={[-4, -2, 2]} intensity={0.3} color="#1B2D7C" />
       <AmbientParticles scrollProgress={scrollProgress} />
       <Composition scrollProgress={scrollProgress} />
+      {bloomEnabled && (
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={0.55} luminanceThreshold={0.7} luminanceSmoothing={0.25} mipmapBlur radius={0.55} />
+        </EffectComposer>
+      )}
     </Canvas>
   )
 }
