@@ -29,12 +29,22 @@ function QueEsPrometeo() {
   return (
     <section id="prometeo" className="bg-white py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
+        <motion.p
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.6 }}
+          variants={fadeUp}
+          className="text-center font-heading text-3xl uppercase leading-none text-prometeo-navy sm:text-4xl"
+        >
+          Del caos al sistema
+        </motion.p>
+
         <motion.div
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.4 }}
           variants={container}
-          className="grid gap-16 lg:grid-cols-2 lg:items-center"
+          className="mt-16 grid gap-16 lg:grid-cols-2 lg:items-center"
         >
           <motion.div variants={fadeUp}>
             <span className="font-heading text-sm uppercase tracking-[0.35em] text-prometeo-red">

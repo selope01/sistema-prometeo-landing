@@ -1,6 +1,10 @@
 import { motion } from 'motion/react'
 import Logo from './Logo'
 
+const WHATSAPP_NUMBER = '59169451074'
+const WHATSAPP_MESSAGE = 'Hola, quiero mi diagnóstico Prometeo'
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
+
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.12 } },
@@ -40,7 +44,9 @@ function CTAFinal() {
 
         <motion.a
           variants={fadeUp}
-          href="#"
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center justify-center rounded-md bg-white px-10 py-5 font-heading text-lg uppercase tracking-wide text-prometeo-red shadow-[6px_6px_0_0_#1B2D7C] transition-transform hover:-translate-y-0.5 hover:shadow-[8px_8px_0_0_#1B2D7C] active:translate-y-0 active:shadow-[3px_3px_0_0_#1B2D7C]"
         >
           Quiero mi diagnóstico
