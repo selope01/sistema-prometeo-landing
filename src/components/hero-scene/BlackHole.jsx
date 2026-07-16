@@ -67,7 +67,7 @@ const DISC_FRAGMENT_SHADER = `
   }
 `
 
-function BlackHole({ position = [0, 0, 0], radius = 0.5, scrollProgress }) {
+function BlackHole({ position = [0, 0, 0], radius = 0.5, scrollProgress, particleCount }) {
   const pointer = usePointerTracking()
   const approachRef = useRef(null)
   const followRef = useRef(null)
@@ -157,7 +157,12 @@ function BlackHole({ position = [0, 0, 0], radius = 0.5, scrollProgress }) {
             <meshBasicMaterial ref={coreMaterialRef} color="#050505" transparent opacity={0} />
           </mesh>
 
-          <OrbitalParticles opacityRef={orbOpacityRef} innerRadius={innerRadius} outerRadius={outerRadius} />
+          <OrbitalParticles
+            opacityRef={orbOpacityRef}
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            count={particleCount}
+          />
         </group>
       </group>
     </group>

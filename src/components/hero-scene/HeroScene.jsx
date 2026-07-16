@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
@@ -29,6 +29,26 @@ const LATE_DRIFT_END = 1.0
 const LATE_DRIFT_X = 0.9
 const LATE_DRIFT_Y = 0.3
 
+const AMBIENT_PARTICLES_FULL = 160
+const AMBIENT_PARTICLES_REDUCED = 70
+const ORBITAL_PARTICLES_FULL = 40
+const ORBITAL_PARTICLES_REDUCED = 18
+
+// Pauses the render loop while the tab is in the background -- without
+// this, frameloop="always" keeps driving useFrame (and the GPU) forever
+// even when nobody can see the canvas.
+function useVisibilityFrameloop() {
+  const [isVisible, setIsVisible] = useState(() => document.visibilityState !== 'hidden')
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setIsVisible(document.visibilityState !== 'hidden')
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  return isVisible
+}
+
 // The hand + energy orb are the closest and right-most points of the
 // composition, so perspective foreshortens them the most. Solve for the
 // largest scale/offset that still keeps that point inside the camera
@@ -56,7 +76,7 @@ function useFrameFit() {
   }, [camera, size])
 }
 
-function Composition({ scrollProgress }) {
+function Composition({ scrollProgress, orbitalParticleCount }) {
   const { offsetX, scale: baseScale } = useFrameFit()
   const groupRef = useRef(null)
 
@@ -76,6 +96,7 @@ function Composition({ scrollProgress }) {
       <PrometeoEntity scrollProgress={scrollProgress} />
       <BlackHole
         scrollProgress={scrollProgress}
+        particleCount={orbitalParticleCount}
         position={[
           HAND_TIP_POSITION[0],
           HAND_TIP_POSITION[1] + 0.12,
@@ -87,11 +108,12 @@ function Composition({ scrollProgress }) {
 }
 
 function HeroScene({ scrollProgress }) {
-  // Bloom adds several extra render passes per frame -- worth it for the
-  // black hole's glow on desktop, but skipped on touch/coarse-pointer
-  // devices (typically weaker GPUs) to keep the narrative animation
-  // smooth there instead.
-  const [bloomEnabled] = useState(() => window.matchMedia('(pointer: fine)').matches)
+  // Bloom adds several extra render passes per frame, and dense particle
+  // fields add draw calls -- worth it for the black hole's glow on
+  // desktop, but reduced/skipped on touch/coarse-pointer devices
+  // (typically weaker GPUs) to keep the narrative animation smooth there.
+  const [highPerformance] = useState(() => window.matchMedia('(pointer: fine)').matches)
+  const isVisible = useVisibilityFrameloop()
 
   return (
     <Canvas
@@ -100,15 +122,21 @@ function HeroScene({ scrollProgress }) {
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, CAMERA_Z], fov: CAMERA_FOV }}
-      frameloop="always"
+      frameloop={isVisible ? 'always' : 'never'}
       onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
     >
       <ambientLight intensity={0.7} />
       <directionalLight position={[3, 4, 5]} intensity={1.4} />
       <directionalLight position={[-4, -2, 2]} intensity={0.3} color="#1B2D7C" />
-      <AmbientParticles scrollProgress={scrollProgress} />
-      <Composition scrollProgress={scrollProgress} />
-      {bloomEnabled && (
+      <AmbientParticles
+        scrollProgress={scrollProgress}
+        count={highPerformance ? AMBIENT_PARTICLES_FULL : AMBIENT_PARTICLES_REDUCED}
+      />
+      <Composition
+        scrollProgress={scrollProgress}
+        orbitalParticleCount={highPerformance ? ORBITAL_PARTICLES_FULL : ORBITAL_PARTICLES_REDUCED}
+      />
+      {highPerformance && (
         <EffectComposer multisampling={0}>
           <Bloom intensity={0.55} luminanceThreshold={0.7} luminanceSmoothing={0.25} mipmapBlur radius={0.55} />
         </EffectComposer>

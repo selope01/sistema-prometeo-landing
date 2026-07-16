@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { motion, useScroll } from 'motion/react'
 import Logo from './Logo'
 import SceneFallback from './hero-scene/SceneFallback'
+import CanvasErrorBoundary from './hero-scene/CanvasErrorBoundary'
 
 const HeroScene = lazy(() => import('./hero-scene/HeroScene'))
 
@@ -19,6 +20,20 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
+// Synchronous, one-time check -- if the browser can't even create a WebGL
+// context (disabled by policy, driver blocklist, very old device), don't
+// bother fetching the Three.js chunk at all and go straight to the 2D
+// fallback. CanvasErrorBoundary below still covers the rarer case where
+// context creation succeeds here but the scene fails to render later.
+function isWebGLSupported() {
+  try {
+    const canvas = document.createElement('canvas')
+    return Boolean(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')))
+  } catch {
+    return false
+  }
+}
+
 const container = {
   hidden: {},
   show: {
@@ -33,6 +48,7 @@ const item = {
 
 function Hero() {
   const prefersReducedMotion = usePrefersReducedMotion()
+  const [webglSupported] = useState(isWebGLSupported)
   const heroRef = useRef(null)
   // The Hero is a scroll-pinned section: this outer element is tall
   // (300vh) and just a scroll spacer, while the inner content stays
@@ -51,12 +67,14 @@ function Hero() {
         />
 
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-          {prefersReducedMotion ? (
+          {prefersReducedMotion || !webglSupported ? (
             <SceneFallback />
           ) : (
-            <Suspense fallback={<SceneFallback />}>
-              <HeroScene scrollProgress={scrollYProgress} />
-            </Suspense>
+            <CanvasErrorBoundary fallback={<SceneFallback />}>
+              <Suspense fallback={<SceneFallback />}>
+                <HeroScene scrollProgress={scrollYProgress} />
+              </Suspense>
+            </CanvasErrorBoundary>
           )}
         </div>
 
@@ -95,7 +113,7 @@ function Hero() {
           <motion.div variants={item} className="flex flex-col gap-4 sm:flex-row">
             <a
               href="#metodologia"
-              className="inline-flex items-center justify-center rounded-md bg-white px-8 py-4 font-heading text-lg uppercase tracking-wide text-prometeo-red shadow-[6px_6px_0_0_#1B2D7C] transition-transform hover:-translate-y-0.5 hover:shadow-[8px_8px_0_0_#1B2D7C] active:translate-y-0 active:shadow-[3px_3px_0_0_#1B2D7C]"
+              className="inline-flex items-center justify-center rounded-md bg-white px-8 py-4 font-heading text-lg uppercase tracking-wide text-prometeo-navy shadow-[6px_6px_0_0_#1B2D7C] transition-transform hover:-translate-y-0.5 hover:shadow-[8px_8px_0_0_#1B2D7C] active:translate-y-0 active:shadow-[3px_3px_0_0_#1B2D7C]"
             >
               Conocer la metodología
             </a>

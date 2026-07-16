@@ -6,7 +6,6 @@ import { useFrame } from '@react-three/fiber'
 // out as the entity fades in (Phase 4's VISIBILITY_START/END on
 // PrometeoEntity), so the two hand off to each other instead of both
 // being visible mid-transition.
-const PARTICLE_COUNT = 160
 const BOUNDS = { x: [-3.5, 4], y: [-2, 3], z: [-1.5, 3] }
 const MAX_OPACITY = 0.85
 const FADE_START = 0.15
@@ -17,19 +16,19 @@ function randomInRange([min, max]) {
   return min + Math.random() * (max - min)
 }
 
-function AmbientParticles({ scrollProgress }) {
+function AmbientParticles({ scrollProgress, count = 160 }) {
   const pointsRef = useRef(null)
   const materialRef = useRef(null)
 
   const positions = useMemo(() => {
-    const array = new Float32Array(PARTICLE_COUNT * 3)
-    for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+    const array = new Float32Array(count * 3)
+    for (let i = 0; i < count; i += 1) {
       array[i * 3] = randomInRange(BOUNDS.x)
       array[i * 3 + 1] = randomInRange(BOUNDS.y)
       array[i * 3 + 2] = randomInRange(BOUNDS.z)
     }
     return array
-  }, [])
+  }, [count])
 
   useFrame((_, delta) => {
     const progress = scrollProgress ? scrollProgress.get() : 1

@@ -2,8 +2,6 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 
-const PARTICLE_COUNT = 40
-
 function randomBetween(min, max) {
   return min + Math.random() * (max - min)
 }
@@ -12,13 +10,13 @@ function randomBetween(min, max) {
 // band -- one BufferGeometry/Points draw call, positions recomputed on
 // the CPU each frame (cheap at this count) instead of re-creating the
 // geometry, so React never re-renders for it.
-function OrbitalParticles({ opacityRef, innerRadius, outerRadius }) {
+function OrbitalParticles({ opacityRef, innerRadius, outerRadius, count = 40 }) {
   const pointsRef = useRef(null)
   const materialRef = useRef(null)
 
   const { positions, particles } = useMemo(() => {
-    const array = new Float32Array(PARTICLE_COUNT * 3)
-    const data = Array.from({ length: PARTICLE_COUNT }, () => {
+    const array = new Float32Array(count * 3)
+    const data = Array.from({ length: count }, () => {
       const orbitRadius = randomBetween(innerRadius * 1.1, outerRadius * 0.95)
       return {
         radius: orbitRadius,
@@ -30,7 +28,7 @@ function OrbitalParticles({ opacityRef, innerRadius, outerRadius }) {
     })
     return { positions: array, particles: data }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [count])
 
   useFrame((_, delta) => {
     const geometry = pointsRef.current?.geometry
