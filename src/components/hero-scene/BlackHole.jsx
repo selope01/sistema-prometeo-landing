@@ -22,10 +22,12 @@ const EMISSIVE_RISE_END = 0.55
 const EMISSIVE_MAX = 2.2
 const LIGHT_MAX_INTENSITY = 4
 
-// State 5: dims slightly, same as the entity, never to zero.
-const LATE_FADE_START = 0.75
-const LATE_FADE_END = 1.0
-const LATE_FADE_AMOUNT = 0.3
+// State 5: this is the climax, so it stays lit at full (or even a touch
+// brighter) while the rest of the scene recedes/dims around it -- see
+// Composition in HeroScene.jsx for the scene-wide fade/scale-down.
+const CLIMAX_BOOST_START = 0.85
+const CLIMAX_BOOST_END = 1.0
+const CLIMAX_BOOST_AMOUNT = 0.2
 
 function BlackHole({ position = [0, 0, 0], radius = 0.5, scrollProgress }) {
   const pointer = usePointerTracking()
@@ -52,19 +54,20 @@ function BlackHole({ position = [0, 0, 0], radius = 0.5, scrollProgress }) {
       followPosition.y = THREE.MathUtils.damp(followPosition.y, -pointer.y * MAX_OFFSET_Y, FOLLOW_DAMP, delta)
     }
 
-    const lateFade = 1 - LATE_FADE_AMOUNT * THREE.MathUtils.smoothstep(progress, LATE_FADE_START, LATE_FADE_END)
-    const orbOpacity = THREE.MathUtils.smoothstep(progress, ORB_VISIBLE_START, ORB_VISIBLE_END) * lateFade
+    const orbOpacity = THREE.MathUtils.smoothstep(progress, ORB_VISIBLE_START, ORB_VISIBLE_END)
     const emissiveRise = THREE.MathUtils.smoothstep(progress, EMISSIVE_RISE_START, EMISSIVE_RISE_END)
+    const climaxBoost =
+      1 + CLIMAX_BOOST_AMOUNT * THREE.MathUtils.smoothstep(progress, CLIMAX_BOOST_START, CLIMAX_BOOST_END)
 
     if (torusMaterialRef.current) {
       torusMaterialRef.current.opacity = orbOpacity
-      torusMaterialRef.current.emissiveIntensity = emissiveRise * EMISSIVE_MAX * lateFade
+      torusMaterialRef.current.emissiveIntensity = emissiveRise * EMISSIVE_MAX * climaxBoost
     }
     if (coreMaterialRef.current) {
       coreMaterialRef.current.opacity = orbOpacity
     }
     if (lightRef.current) {
-      lightRef.current.intensity = emissiveRise * LIGHT_MAX_INTENSITY * lateFade
+      lightRef.current.intensity = emissiveRise * LIGHT_MAX_INTENSITY * climaxBoost
     }
   })
 

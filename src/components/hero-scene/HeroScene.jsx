@@ -16,11 +16,17 @@ const DESIRED_OFFSET_X = 1.5
 const MIN_OFFSET_X = 0.15
 const EDGE_MARGIN = 0.25
 
-// State 5 (0.75-1.00): the scene recedes slightly as the HTML text/CTA
-// take over, but never disappears or drops low enough to read as gone.
+// State 5 (0.75-1.00): the scene recedes as the HTML text/CTA take over.
+// It shrinks and drifts further right/up (clear of the headline's right
+// edge) in the last stretch, but never disappears entirely.
 const RECEDE_START = 0.75
 const RECEDE_END = 1.0
-const RECEDE_AMOUNT = 0.15
+const RECEDE_AMOUNT = 0.4
+
+const LATE_DRIFT_START = 0.8
+const LATE_DRIFT_END = 1.0
+const LATE_DRIFT_X = 0.9
+const LATE_DRIFT_Y = 0.3
 
 // The hand + energy orb are the closest and right-most points of the
 // composition, so perspective foreshortens them the most. Solve for the
@@ -58,6 +64,10 @@ function Composition({ scrollProgress }) {
     const progress = scrollProgress ? scrollProgress.get() : 1
     const recede = 1 - RECEDE_AMOUNT * THREE.MathUtils.smoothstep(progress, RECEDE_START, RECEDE_END)
     groupRef.current.scale.setScalar(baseScale * recede)
+
+    const drift = THREE.MathUtils.smoothstep(progress, LATE_DRIFT_START, LATE_DRIFT_END)
+    groupRef.current.position.x = offsetX + LATE_DRIFT_X * drift
+    groupRef.current.position.y = -0.3 + LATE_DRIFT_Y * drift
   })
 
   return (
