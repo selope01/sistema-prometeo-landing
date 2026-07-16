@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import PrometeoEntity, { HAND_TIP_POSITION } from './PrometeoEntity'
 import BlackHole from './BlackHole'
+import { prefersFinePointer } from './usePointerTracking'
 
 const CAMERA_Z = 7.5
 const CAMERA_FOV = 36
@@ -59,6 +60,12 @@ function Composition() {
 }
 
 function HeroScene() {
+  // Continuous rendering is needed for the cursor-follow damping in
+  // PrometeoEntity/BlackHole, but only where that interaction is actually
+  // active. Touch-only devices keep "demand" (Phase 1 default) since
+  // nothing animates on them, saving battery.
+  const [frameloop] = useState(() => (prefersFinePointer() ? 'always' : 'demand'))
+
   return (
     <Canvas
       className="h-full w-full"
@@ -66,7 +73,7 @@ function HeroScene() {
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
       camera={{ position: [0, 0, CAMERA_Z], fov: CAMERA_FOV }}
-      frameloop="demand"
+      frameloop={frameloop}
       onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
     >
       <ambientLight intensity={0.7} />
