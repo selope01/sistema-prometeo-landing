@@ -17,10 +17,6 @@ const finePointerQuery = () => window.matchMedia('(hover: hover) and (pointer: f
 // Devices without a real mouse (touch-only) never get the listener
 // attached, so `pointer` stays at (0, 0) and every damped target stays
 // at rest — this is what disables the interaction on touch.
-export function prefersFinePointer() {
-  return typeof window !== 'undefined' && finePointerQuery().matches
-}
-
 export function usePointerTracking() {
   useEffect(() => {
     const mediaQuery = finePointerQuery()
