@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-prometeo-red: #FF3131;
+  --color-prometeo-navy: #1B2D7C;
+
+  --font-heading: "Anton", "Arial Narrow", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white font-sans text-prometeo-navy antialiased;
+  }
+}
