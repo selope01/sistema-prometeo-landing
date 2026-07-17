@@ -3,6 +3,7 @@ import { motion, useScroll } from 'motion/react'
 import Logo from './Logo'
 import SceneFallback from './hero-scene/SceneFallback'
 import CanvasErrorBoundary from './hero-scene/CanvasErrorBoundary'
+import { useHeroTextBoundsTracking } from './hero-scene/heroTextBounds'
 
 const HeroScene = lazy(() => import('./hero-scene/HeroScene'))
 
@@ -58,6 +59,14 @@ function Hero() {
   // instead of scrolling past in under one screen of height.
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end end'] })
 
+  // The widest text elements -- headline and the CTA row (which can be
+  // wider than the headline on some breakpoints) -- so HeroScene's
+  // Composition can keep the 3D figure clear of whichever actually
+  // extends furthest right at the current viewport width.
+  const headlineRef = useRef(null)
+  const ctaRowRef = useRef(null)
+  useHeroTextBoundsTracking(headlineRef, ctaRowRef)
+
   return (
     <section ref={heroRef} className="relative h-[300vh] bg-prometeo-red text-white">
       <div className="sticky top-0 h-svh overflow-hidden">
@@ -96,6 +105,7 @@ function Hero() {
           </motion.p>
 
           <motion.h1
+            ref={headlineRef}
             variants={item}
             className="max-w-4xl font-heading text-5xl uppercase leading-[0.95] tracking-tight sm:text-6xl md:text-7xl"
             style={{ textShadow: '4px 4px 0 #1B2D7C' }}
@@ -110,7 +120,7 @@ function Hero() {
             imparables: estrategia con fuerza, ejecución con fuego.
           </motion.p>
 
-          <motion.div variants={item} className="flex flex-col gap-4 sm:flex-row">
+          <motion.div ref={ctaRowRef} variants={item} className="flex flex-col gap-4 sm:flex-row">
             <a
               href="#metodologia"
               className="inline-flex items-center justify-center rounded-md bg-white px-8 py-4 font-heading text-lg uppercase tracking-wide text-prometeo-navy shadow-[6px_6px_0_0_#1B2D7C] transition-transform hover:-translate-y-0.5 hover:shadow-[8px_8px_0_0_#1B2D7C] active:translate-y-0 active:shadow-[3px_3px_0_0_#1B2D7C]"

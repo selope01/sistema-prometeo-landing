@@ -1,21 +1,48 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer, Bloom } from '@react-three/postprocessing'
-import PrometeoEntity, { HAND_TIP_POSITION } from './PrometeoEntity'
+import PrometeoModel, { CHEST_ANCHOR, WAIST_ANCHOR_Y, BODY_RIGHT_X } from './PrometeoModel'
 import BlackHole from './BlackHole'
 import AmbientParticles from './AmbientParticles'
+import { heroTextBounds } from './heroTextBounds'
 
 const CAMERA_Z = 7.5
 const CAMERA_FOV = 36
 
 const BLACKHOLE_FORWARD_OFFSET = 0.3
-const BLACKHOLE_RADIUS = 0.5
+const BLACKHOLE_RADIUS = 0.4
 
-const DESIRED_SCALE = 1
-const DESIRED_OFFSET_X = 1.5
-const MIN_OFFSET_X = 0.15
-const EDGE_MARGIN = 0.25
+// Cinematic bust shot: big on wide viewports, tapering down modestly on
+// narrow ones. Deliberately NOT clamped by "does the body fit beside the
+// text at this width" (that used to collapse the scale on narrow
+// viewports and undercut the close-up) -- horizontal text clearance is
+// handled separately below, by pushing the figure right (and letting it
+// bleed off the edge) instead of shrinking it.
+const SCALE_AT_WIDE = 2.35
+const SCALE_AT_NARROW = 2.0
+const SCALE_WIDE_BREAKPOINT = 1440
+const SCALE_NARROW_BREAKPOINT = 768
+
+function scaleForWidth(width) {
+  const t = THREE.MathUtils.clamp(
+    (width - SCALE_NARROW_BREAKPOINT) / (SCALE_WIDE_BREAKPOINT - SCALE_NARROW_BREAKPOINT),
+    0,
+    1,
+  )
+  return THREE.MathUtils.lerp(SCALE_AT_NARROW, SCALE_AT_WIDE, t)
+}
+
+// Where the crop's bottom edge (the hips) sits, as a fraction of the
+// camera's vertical half-height at the composition's depth -- negative is
+// below the viewport's vertical center. -1.05 puts the hip line just past
+// the bottom edge of the frustum, so nothing below the hip renders at all
+// -- solved together with SCALE_AT_WIDE so the head clears the top with
+// headroom to spare (see the framing derivation this replaced).
+const WAIST_TARGET_Y = -1.05
+
+const TEXT_SAFETY_GAP_PX = 40
+const MIN_OFFSET_X = 0.1
 
 // State 5 (0.75-1.00): the scene recedes as the HTML text/CTA take over.
 // It shrinks and drifts further right/up (clear of the headline's right
@@ -49,59 +76,61 @@ function useVisibilityFrameloop() {
   return isVisible
 }
 
-// The hand + energy orb are the closest and right-most points of the
-// composition, so perspective foreshortens them the most. Solve for the
-// largest scale/offset that still keeps that point inside the camera
-// frustum, for the frame's actual aspect ratio, instead of guessing fixed
-// numbers that only work at one viewport size.
-function useFrameFit() {
-  const camera = useThree((state) => state.camera)
-  const size = useThree((state) => state.size)
+// Horizontal placement is driven by the REAL rendered text edge
+// (heroTextBounds, measured live in Hero.jsx) converted into world units
+// at the composition's depth, not by keeping the body inside the
+// frustum -- that's what let the figure shrink itself down on narrow
+// viewports instead of just sliding right. The body is allowed to bleed
+// off the right edge (capped so its center stays on-screen) rather than
+// shrink, so the close-up stays close regardless of viewport width.
+function computeFit(camera, size, scale) {
+  const aspect = size.width / size.height
+  const halfFovRad = ((camera.fov ?? CAMERA_FOV) * Math.PI) / 360
+  const k = Math.tan(halfFovRad) * aspect
+  const halfHeight = Math.tan(halfFovRad) * CAMERA_Z
+  const worldHalfWidth = k * CAMERA_Z
 
-  return useMemo(() => {
-    const aspect = size.width / size.height
-    const halfFovRad = ((camera.fov ?? CAMERA_FOV) * Math.PI) / 360
-    const k = Math.tan(halfFovRad) * aspect
+  const pxToWorld = worldHalfWidth / (size.width / 2)
+  const textRightWorld = (heroTextBounds.rightEdgePx - size.width / 2) * pxToWorld
+  const safetyGapWorld = TEXT_SAFETY_GAP_PX * pxToWorld
+  const bodyHalfWidth = BODY_RIGHT_X * scale
 
-    const nearZLocal = HAND_TIP_POSITION[2] + BLACKHOLE_FORWARD_OFFSET
-    const rightXLocal = HAND_TIP_POSITION[0] + BLACKHOLE_RADIUS
+  let offsetX = textRightWorld + safetyGapWorld + bodyHalfWidth
+  offsetX = Math.max(MIN_OFFSET_X, offsetX)
+  offsetX = Math.min(offsetX, worldHalfWidth) // keep at least the body's center on-screen
 
-    const maxScale = (k * CAMERA_Z - MIN_OFFSET_X - EDGE_MARGIN) / (rightXLocal + k * nearZLocal)
-    const scale = Math.min(DESIRED_SCALE, Math.max(0.3, maxScale))
+  const offsetY = WAIST_TARGET_Y * halfHeight - WAIST_ANCHOR_Y * scale
 
-    const halfWidthAtNearest = k * (CAMERA_Z - nearZLocal * scale)
-    const offsetX = Math.min(DESIRED_OFFSET_X, halfWidthAtNearest - rightXLocal * scale - EDGE_MARGIN)
-
-    return { offsetX: Math.max(MIN_OFFSET_X, offsetX), scale }
-  }, [camera, size])
+  return { offsetX, offsetY }
 }
 
 function Composition({ scrollProgress, orbitalParticleCount }) {
-  const { offsetX, scale: baseScale } = useFrameFit()
+  const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
   const groupRef = useRef(null)
 
   useFrame(() => {
     if (!groupRef.current) return
     const progress = scrollProgress ? scrollProgress.get() : 1
+
+    const baseScale = scaleForWidth(size.width)
+    const { offsetX, offsetY } = computeFit(camera, size, baseScale)
+
     const recede = 1 - RECEDE_AMOUNT * THREE.MathUtils.smoothstep(progress, RECEDE_START, RECEDE_END)
     groupRef.current.scale.setScalar(baseScale * recede)
 
     const drift = THREE.MathUtils.smoothstep(progress, LATE_DRIFT_START, LATE_DRIFT_END)
     groupRef.current.position.x = offsetX + LATE_DRIFT_X * drift
-    groupRef.current.position.y = -0.3 + LATE_DRIFT_Y * drift
+    groupRef.current.position.y = offsetY + LATE_DRIFT_Y * drift
   })
 
   return (
-    <group ref={groupRef} position={[offsetX, -0.3, 0]}>
-      <PrometeoEntity scrollProgress={scrollProgress} />
+    <group ref={groupRef}>
+      <PrometeoModel scrollProgress={scrollProgress} />
       <BlackHole
         scrollProgress={scrollProgress}
         particleCount={orbitalParticleCount}
-        position={[
-          HAND_TIP_POSITION[0],
-          HAND_TIP_POSITION[1] + 0.12,
-          HAND_TIP_POSITION[2] + BLACKHOLE_FORWARD_OFFSET,
-        ]}
+        position={[CHEST_ANCHOR[0], CHEST_ANCHOR[1], CHEST_ANCHOR[2] + BLACKHOLE_FORWARD_OFFSET]}
       />
     </group>
   )
